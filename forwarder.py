@@ -135,7 +135,6 @@ def close_socket_pair(source_socket):
     # Tear down target socket.
     teardown_socket(target_socket)
 
-
 def run_program():
     # Main Loop
     while True:
