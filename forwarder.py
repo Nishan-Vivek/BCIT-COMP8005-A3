@@ -3,15 +3,18 @@ from socket import *
 import sys
 import queue
 import signal
-import csv
+import config
 
 DEBUG = True
-LISTEN_PORT = 5000
+LISTEN_PORT = config.LISTEN_PORT
+LISTEN_IP = config.LISTEN_IP
+TARGET_PORT = config.TARGET_PORT
+TARGET_IP = config.TARGET_IP
 BUFFER_SIZE = 1024
-Target = ('localhost', 10001)
+Target = (TARGET_IP, TARGET_PORT)
 
 # Setup Listening Socket
-server_address = ('', LISTEN_PORT)
+server_address = (LISTEN_IP, LISTEN_PORT)
 listen_socket = socket(AF_INET, SOCK_STREAM)
 listen_socket.setblocking(0)
 listen_socket.bind(server_address)

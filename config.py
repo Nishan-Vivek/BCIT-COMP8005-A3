@@ -1,0 +1,4 @@
+LISTEN_PORT = 5000
+LISTEN_IP = 'localhost'
+TARGET_PORT = 10001
+TARGET_IP = 'localhost'
