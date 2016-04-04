@@ -9,9 +9,9 @@ import csv
 DEBUG = True
 SERVER_PORT = 5000
 SERVER_ADDRESS = 'localhost'
-PROC_NUM = 1
-THREAD_PER_PROC = 1
-REPEAT = 1
+PROC_NUM = 10
+THREAD_PER_PROC = 10
+REPEAT = 10
 SOCKET_TIMEOUT = 0
 PAYLOAD = "This is the payload"
 

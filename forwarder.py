@@ -79,12 +79,14 @@ def setup_socket(arg1, arg2=None):
             client_sockets[sock.fileno()] = sock
             message_queues[sock.fileno()] = queue.Queue()
             client_addresses[sock.fileno()] = sock.getpeername()
+            data_buffer[sock.fileno()] = b''
         else:
             print_d("Setup Socket to {0}: ".format(arg1))
             sock = arg1
             sock.setblocking(0)
             client_sockets[sock.fileno()] = sock
             message_queues[sock.fileno()] = queue.Queue()
+            data_buffer[sock.fileno()] = b''
         return sock
     except Exception as e:
         print_d("Error in setup_socket: " + repr(e))
@@ -110,13 +112,14 @@ def create_socket_pair():
     # Create and store target socket
     target_socket = setup_socket(Target[0], Target[1])
     if target_socket:
+        target_socket.setblocking(0)
         # Store socket pair
         socket_channels[source_socket] = target_socket
         socket_channels[target_socket] = source_socket
         # Register source socket for EPOLLIN
         epoll.register(source_socket.fileno(), select.EPOLLIN | select.EPOLLET)
         # Register target socket for EPOLLOUT
-        epoll.register(target_socket.fileno(), select.EPOLLET)
+        epoll.register(target_socket.fileno(),select.EPOLLIN | select.EPOLLET)
         # Register listen socket for EPOLLIN
         epoll.modify(listen_socket.fileno(), select.EPOLLIN | select.EPOLLET)
     else:
@@ -145,19 +148,12 @@ def close_socket_pair(source_socket):
     # Tear down target socket.
     teardown_socket(target_socket)
 
+
 def forward_buffered_data(target_socket):
     offset = target_socket.send(data_buffer[target_socket.fileno()])
-    if len (data_buffer[target_socket.fileno()]) > offset:
+    if len(data_buffer[target_socket.fileno()]) > offset:
         data_buffer[target_socket.fileno()] = data_buffer[target_socket.fileno()][offset:]
         epoll.modify(target_socket.fileno(), select.EPOLLOUT)
-
-
-
-    # print('in')
-    # byteswritten = self.channels[fileno].send(self.buffers[fileno])
-    # if len(self.buffers[fileno]) > byteswritten:
-    #     self.buffers[fileno] = self.buffers[fileno][byteswritten:]
-    #     self.epoll.modify(fileno, select.EPOLLOUT)
 
 
 def forward_data(source_socket):
@@ -165,7 +161,7 @@ def forward_data(source_socket):
     target_socket = socket_channels[source_socket]
     if payload:
         if len(data_buffer[target_socket.fileno()]) > 0:
-                data_buffer[target_socket.fileno()] += payload
+            data_buffer[target_socket.fileno()] += payload
         else:
             try:
                 offset = target_socket.send(payload)
@@ -174,21 +170,6 @@ def forward_data(source_socket):
                     epoll.modify(target_socket.fileno(), select.EPOLLOUT | select.EPOLLET)
             except Exception as e:
                 close_socket_pair(source_socket)
-
-        # else:
-        #         try:
-        #             byteswritten = self.channels[fileno].send(data)
-        #             print('data sent to target')
-        #             if len(data) > byteswritten:
-        #                 self.buffers[fileno] = data[byteswritten:]
-        #                 self.epoll.modify(fileno, select.EPOLLOUT)
-        #         except socket.error:
-        #             self.connections[fileno].send(
-        #                 bytes("Can't reach server\n", 'UTF-8'))
-        #             self.epoll.modify(fileno, 0)
-        #             self.connections[fileno].shutdown(socket.SHUT_RDWR)
-
-
 
 
 def run_program():
@@ -239,7 +220,7 @@ def run_program():
                 #         close_socket_pair(client_sockets[fileno])
 
 
-                        # handle closed or erroneous connections
+                # handle closed or erroneous connections
             else:
                 pass
                 # print_d("Closing connection to {0}".format(client_addresses[fileno]))
