@@ -5,8 +5,8 @@ import queue
 import signal
 import csv
 
-DEBUG = False
-LISTEN_PORT = 10000
+DEBUG = True
+LISTEN_PORT = 10001
 BUFFER_SIZE = 1024
 
 
