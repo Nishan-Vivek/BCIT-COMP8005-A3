@@ -145,17 +145,33 @@ def close_socket_pair(source_socket):
     # Tear down target socket.
     teardown_socket(target_socket)
 
+def forward_buffered_data(target_socket):
+    offset = target_socket.send(data_buffer[target_socket.fileno()])
+    if len (data_buffer[target_socket.fileno()]) > offset:
+        data_buffer[target_socket.fileno()] = data_buffer[target_socket.fileno()][offset:]
+        epoll.modify(target_socket.fileno(), select.EPOLLOUT)
+
+
+
+    # print('in')
+    # byteswritten = self.channels[fileno].send(self.buffers[fileno])
+    # if len(self.buffers[fileno]) > byteswritten:
+    #     self.buffers[fileno] = self.buffers[fileno][byteswritten:]
+    #     self.epoll.modify(fileno, select.EPOLLOUT)
+
+
 def forward_data(source_socket):
     payload = source_socket.recv(BUFFER_SIZE)
+    target_socket = socket_channels[source_socket]
     if payload:
-        if len(data_buffer[source_socket.fileno()]) > 0:
-                data_buffer[source_socket.fileno()] += payload
+        if len(data_buffer[target_socket.fileno()]) > 0:
+                data_buffer[target_socket.fileno()] += payload
         else:
             try:
-                offset = source_socket.send(payload)
-                if len(payload) > offset
-                    data_buffer[source_socket.fileno()] = payload[offset:]
-                    epoll.modify(source_socket.fileno(), select.EPOLLOUT | select.EPOLLET)
+                offset = target_socket.send(payload)
+                if len(payload) > offset:
+                    data_buffer[target_socket.fileno()] = payload[offset:]
+                    epoll.modify(target_socket.fileno(), select.EPOLLOUT | select.EPOLLET)
             except Exception as e:
                 close_socket_pair(source_socket)
 
@@ -188,35 +204,39 @@ def run_program():
                     # Create Socket Pair
                     create_socket_pair()
                 else:
-                    try:
-                        # TODO replace with forward data method using a simpler message buffer.
-                        data = client_sockets[fileno].recv(BUFFER_SIZE)
-                        data_string = data.decode()
-                        if data:
-                            on_recv(client_sockets[fileno], data)
-                        else:  # close connection
-                            print_d("Closing connection with {0}, no data".format(client_addresses[fileno]))
-                            close_socket_pair(client_sockets[fileno])
-                    except Exception as e:
-                        print_d("Closing connection to {0}, ".format(client_addresses[fileno]) + repr(e))
-                        close_socket_pair(client_sockets[fileno])
+                    # TODO replace with forward data method using a simpler message buffer.
+                    forward_data(client_sockets[fileno])
+
+                    # try:
+                    #     data = client_sockets[fileno].recv(BUFFER_SIZE)
+                    #     data_string = data.decode()
+                    #     if data:
+                    #         on_recv(client_sockets[fileno], data)
+                    #     else:  # close connection
+                    #         print_d("Closing connection with {0}, no data".format(client_addresses[fileno]))
+                    #         close_socket_pair(client_sockets[fileno])
+                    # except Exception as e:
+                    #     print_d("Closing connection to {0}, ".format(client_addresses[fileno]) + repr(e))
+                    #     close_socket_pair(client_sockets[fileno])
 
             # handle writeable connections
             elif event & select.EPOLLOUT:
-                try:
-                    next_msg = message_queues[fileno].get_nowait()
-                except Exception as e:
-                    continue
-                    # print_d("Closing connection to {0}, ".format(client_addresses[fileno]) + repr(e))
-                    # close_socket_pair(client_sockets[fileno])
-                else:
-                    try:
-                        print_d("Sending " + next_msg.decode() + " to {0}".format(client_addresses[fileno]), DEBUG)
-                        client_sockets[fileno].sendall(next_msg)
-                        epoll.modify(fileno, select.EPOLLIN | select.EPOLLET)
-                    except Exception as e:
-                        print_d("Closing connection to {0}, ".format(client_addresses[fileno]) + repr(e))
-                        close_socket_pair(client_sockets[fileno])
+                # TODO replace with forward bufferd data method
+                forward_buffered_data(client_sockets[fileno])
+                # try:
+                #     next_msg = message_queues[fileno].get_nowait()
+                # except Exception as e:
+                #     continue
+                #     # print_d("Closing connection to {0}, ".format(client_addresses[fileno]) + repr(e))
+                #     # close_socket_pair(client_sockets[fileno])
+                # else:
+                #     try:
+                #         print_d("Sending " + next_msg.decode() + " to {0}".format(client_addresses[fileno]), DEBUG)
+                #         client_sockets[fileno].sendall(next_msg)
+                #         epoll.modify(fileno, select.EPOLLIN | select.EPOLLET)
+                #     except Exception as e:
+                #         print_d("Closing connection to {0}, ".format(client_addresses[fileno]) + repr(e))
+                #         close_socket_pair(client_sockets[fileno])
 
 
                         # handle closed or erroneous connections
